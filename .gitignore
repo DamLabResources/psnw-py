@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.nbi
+*.nbc
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+# sequencing data never belongs in this repo
+*.sam
+*.bam
+*.cram
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz

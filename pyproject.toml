@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "psnw-py"
+version = "0.1.0"
+description = "Position-specific Needleman-Wunsch (after lh3/psnw) in Python + numba, with reference-anchored MSA"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Will Dampier", email = "wnd22@drexel.edu" }]
+keywords = ["alignment", "needleman-wunsch", "CRISPR", "CAST-seq", "bioinformatics", "MSA"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.20"]
+
+[project.optional-dependencies]
+numba = ["numba>=0.56"]
+io = ["pysam"]
+dev = ["pytest", "numba>=0.56"]
+
+[project.scripts]
+psnw-py = "psnw_py.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["psnw_py", "psnw_py.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "binary: compares against the lh3/psnw C binary (PSNW_BIN)",
+    "regression: reads the shared CAST-seq regression set (read-only)",
+]
