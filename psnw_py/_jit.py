@@ -8,10 +8,26 @@ numba is importable; ``PSNW_PY_BACKEND=numba`` makes a missing numba an error.
 from __future__ import annotations
 
 import os
+from typing import Optional
 
-_REQUESTED = os.environ.get("PSNW_PY_BACKEND", "").strip().lower()
-if _REQUESTED not in ("", "python", "numba"):
-    raise ImportError(f"PSNW_PY_BACKEND must be 'python' or 'numba', got {_REQUESTED!r}")
+
+def parse_backend_env(value: Optional[str] = None) -> str:
+    """Return a normalised ``PSNW_PY_BACKEND`` value (``''``, ``python``, or ``numba``)."""
+    if value is None:
+        value = os.environ.get("PSNW_PY_BACKEND", "")
+    requested = value.strip().lower()
+    if requested not in ("", "python", "numba"):
+        raise ImportError(f"PSNW_PY_BACKEND must be 'python' or 'numba', got {requested!r}")
+    return requested
+
+
+def require_numba_if_requested(requested: str, have_numba: bool) -> None:
+    """Raise if the env asked for numba but it is not installed."""
+    if requested == "numba" and not have_numba:
+        raise ImportError("PSNW_PY_BACKEND=numba but numba is not installed")
+
+
+_REQUESTED = parse_backend_env()
 
 try:
     import numba as _numba
@@ -21,8 +37,7 @@ except ImportError:  # pragma: no cover - exercised only without numba
     _numba = None
     HAVE_NUMBA = False
 
-if _REQUESTED == "numba" and not HAVE_NUMBA:
-    raise ImportError("PSNW_PY_BACKEND=numba but numba is not installed")
+require_numba_if_requested(_REQUESTED, HAVE_NUMBA)
 
 DEFAULT_BACKEND = "numba" if HAVE_NUMBA and _REQUESTED != "python" else "python"
 

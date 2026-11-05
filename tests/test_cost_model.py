@@ -4,10 +4,9 @@ import numpy as np
 import pytest
 
 from gen import mutate, rand_seq
-from conftest import run_binary
 
 import psnw_py
-from psnw_py import align, choose, score_cigar
+from psnw_py import align, score_cigar
 
 BACKENDS = ["python"] + (["numba"] if psnw_py.HAVE_NUMBA else [])
 
@@ -71,30 +70,6 @@ def test_subsidy_never_pays_a_bonus():
     assert same.score == aln.score
 
 
-@pytest.mark.binary
-def test_psnw_quirks_are_real(psnw_bin):
-    """Document the upstream behaviour psnw-py fixes."""
-    core = "ACGTTGCAAGGCTTACGATCGATTGCA"
-    a, w, b = "ACGTTGCAAGGCTTAC", "GATCGATTGCATGCAA", "TCAGGCATCGGATACC"
-    cases = [
-        ("C" * 10 + core, core, "0" * (10 + len(core)), "5" * 10 + "0" * len(core)),
-        (a + w + b, a + b, "0" * len(a + w + b), "0" * len(a) + "9" * len(w) + "0" * len(b)),
-    ]
-    res = run_binary(psnw_bin, cases)
-    (dp0, cg0), (dp1, cg1) = res
-    # The boundary column ignores pse, so psnw picks a mismatch + interior
-    # deletion over the clean leading deletion its own AS scores higher, and
-    # reports the clean one only as a "0M" shift.
-    assert cg0[0][0] == f"1M10D{len(core) - 1}M"
-    assert any(c[0] == f"0M10D{len(core)}M" and c[3] == 6 * len(core) - 30 for c in cg0[1:])
-    assert cg0[0][3] < 6 * len(core) - 30
-    mine = align(cases[0][0], core, pse=cases[0][3])
-    assert (mine.cigar, mine.score) == (f"10D{len(core)}M", 6 * len(core) - 30)
-    # pse > gap_extend pays the DP a bonus that the per-CIGAR AS clamps away
-    assert dp1 > cg1[0][3] == 6 * (len(a) + len(b)) - 30
-    assert align(cases[1][0], a + b, pse=cases[1][3]).score == cg1[0][3]
-
-
 def test_subsidy_inputs():
     t = "ACGTACGTAC"
     a = align(t, "ACGTCGTAC", pse="0000500000", pso="0" * 10)
@@ -142,17 +117,3 @@ def test_shifts_every_gap():
     assert len(aln.shifts(all_gaps=False)) == len([s for s in sh if s.gap_index == 1])
 
 
-def test_choose_tie_break():
-    # equal scores: prefer deletion overlap with the window, then a single D
-    class C:
-        def __init__(self, cig, score):
-            self.cigartuples = psnw_py.parse_cigar(cig)
-            self.score = score
-
-    a, b, c = C("5M3D10M", 10), C("10M3D5M", 10), C("9M3D6M", 9)
-    assert choose([a, b, c], 100, 110, 113) is b
-    one, two = C("4M2D4M", 5), C("2M1D2M1D4M", 5)
-    assert choose([two, one], 0, 4, 6) is one
-    first, second = C("5M3D10M", 3), C("6M3D9M", 3)
-    assert choose([first, second], 0, 100, 110) is first
-    assert choose([("5M3D10M", 1, 1), ("10M3D5M", 1, 1)], 100, 110, 113)[0] == "10M3D5M"

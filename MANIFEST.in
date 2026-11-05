@@ -1,0 +1,16 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include Makefile
+include .readthedocs.yaml
+graft psnw_py
+graft tests
+graft docs
+graft bench
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.nbi
+global-exclude *.nbc
+prune scratch
+prune docs/_build
+prune .venv

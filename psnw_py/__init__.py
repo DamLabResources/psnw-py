@@ -6,7 +6,6 @@ from .core import (
     Alignment,
     Shift,
     align,
-    choose,
     cigar_str,
     deletions,
     encode,
@@ -16,7 +15,6 @@ from .core import (
     score_cigar,
     substitution_matrix,
 )
-from .cut import Placed, anchor_pairs, realign_read
 
 __version__ = "0.1.0"
 
@@ -24,11 +22,8 @@ __all__ = [
     "Alignment",
     "DEFAULT_BACKEND",
     "HAVE_NUMBA",
-    "Placed",
     "Shift",
     "align",
-    "anchor_pairs",
-    "choose",
     "cigar_str",
     "decode",
     "deletions",
@@ -36,7 +31,6 @@ __all__ = [
     "gap_costs",
     "msa",
     "parse_cigar",
-    "realign_read",
     "score_cigar",
     "substitution_matrix",
 ]

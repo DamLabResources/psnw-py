@@ -31,3 +31,16 @@ def test_backend_env_var():
     assert p.stdout.strip() == "python"
     p = _run("import psnw_py", PSNW_PY_BACKEND="fortran")
     assert p.returncode != 0
+    p = _run(
+        "class Boom:\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name == 'numba' or (name and name.startswith('numba.')):\n"
+        "            raise ImportError('no numba')\n"
+        "        return None\n"
+        "import sys\n"
+        "sys.meta_path.insert(0, Boom())\n"
+        "import psnw_py\n",
+        PSNW_PY_BACKEND="numba",
+    )
+    assert p.returncode != 0
+    assert "numba" in (p.stderr + p.stdout).lower()

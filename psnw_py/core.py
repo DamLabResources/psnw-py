@@ -398,27 +398,3 @@ def align(
         _gap_open=int(gap_open),
         _gap_extend=int(gap_extend),
     )
-
-
-def choose(candidates: Sequence, pos0: int, win_start: int, win_end: int):
-    """Pick one placement: highest score, then most deletion overlap with
-    ``[win_start, win_end)``, then a single D. Earlier candidates win ties.
-
-    ``candidates`` are objects with ``score`` and ``cigartuples`` (an
-    :class:`Alignment` or :class:`Shift`) or ``(cigar, score, ...)`` tuples as
-    produced by the old psnw text parser. ``pos0`` is the reference
-    coordinate of target base 0; each candidate's ``target_start`` is added.
-    """
-
-    def key(c):
-        if isinstance(c, tuple):
-            cig, score, ts = c[0], c[1], 0
-        else:
-            cig, score, ts = c.cigartuples, c.score, getattr(c, "target_start", 0)
-        dels = deletions(pos0 + ts, cig)
-        overlap = sum(n for s, n in dels if s < win_end and s + n > win_start)
-        return (score, overlap, 1 if len(dels) == 1 else 0)
-
-    if not candidates:
-        raise ValueError("choose() needs at least one candidate")
-    return max(candidates, key=key)

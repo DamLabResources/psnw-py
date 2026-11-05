@@ -1,26 +1,20 @@
-"""ms/alignment: psnw C binary vs psnw-py (python, numba) on a synthetic cut read.
+"""ms/alignment: psnw-py python vs numba on a synthetic subsidized deletion.
 
-    python bench/bench.py [--psnw PATH] [--lengths 150 300]
+    python bench/bench.py [--lengths 150 300]
 
-Synthetic: random 600 bp reference, cut window [300, 320), read = flank +
+Synthetic: random 600 bp reference, subsidized window [300, 320), read = flank +
 30 bp deletion + flank, target = anchor span, pse 5 on window bases.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import random
-import subprocess
 import sys
 import time
 
 import psnw_py
 from psnw_py import align, msa
-
-DEFAULT_BIN = os.environ.get(
-    "PSNW_BIN", "/home/jupyter-will/repos/agent-lab/.cursor/skills/psnw-cut-realign/bin/psnw"
-)
 
 
 def case(read_len: int, seed: int = 1):
@@ -45,10 +39,8 @@ def timeit(fn, n):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--psnw", default=DEFAULT_BIN)
     ap.add_argument("--lengths", type=int, nargs="+", default=[150, 300])
     args = ap.parse_args()
-    have_bin = os.path.isfile(args.psnw) and os.access(args.psnw, os.X_OK)
 
     t0 = time.perf_counter()
     align("ACGT", "ACT", backend="numba" if psnw_py.HAVE_NUMBA else "python")
@@ -59,18 +51,17 @@ def main():
     for L in args.lengths:
         ref, target, read, pse = case(L)
         cells = len(target) * len(read)
-        rows = []
-        if have_bin:
-            line = "\t".join(("r", target, read, "0" * len(target), "".join(map(str, pse)))) + "\n"
-            rows.append(("C psnw, 1 subprocess/aln", timeit(lambda: subprocess.run([args.psnw, "-"], input=line, text=True, capture_output=True), 200)))
-            N = 5000
-            t = time.perf_counter()
-            subprocess.run([args.psnw, "-"], input=line * N, text=True, capture_output=True)
-            rows.append((f"C psnw, batched ({N}/proc)", (time.perf_counter() - t) / N))
-        rows.append(("psnw-py python", timeit(lambda: align(target, read, pse=pse, backend="python"), 10)))
+        rows = [
+            ("psnw-py python", timeit(lambda: align(target, read, pse=pse, backend="python"), 10)),
+        ]
         if psnw_py.HAVE_NUMBA:
             rows.append(("psnw-py numba", timeit(lambda: align(target, read, pse=pse, backend="numba"), 3000)))
-            rows.append(("psnw-py numba + shifts", timeit(lambda: align(target, read, pse=pse, backend="numba").placements(), 3000)))
+            rows.append(
+                (
+                    "psnw-py numba + shifts",
+                    timeit(lambda: align(target, read, pse=pse, backend="numba").placements(), 3000),
+                )
+            )
         for label, dt in rows:
             print(f"{L:>5} {cells:>7} {label:<28} {dt * 1e3:9.3f} {1 / dt:9.0f}")
 
@@ -81,9 +72,17 @@ def main():
         reads = []
         for k in range(50):
             s, e = rng.randint(0, 40), rng.randint(260, 300)
-            reads.append((f"r{k}", ref[s:150] + ("GATTACA" if k % 2 else "") + ref[150 + (0 if k % 3 else 12) : e]))
+            reads.append(
+                (
+                    f"r{k}",
+                    ref[s:150] + ("GATTACA" if k % 2 else "") + ref[150 + (0 if k % 3 else 12) : e],
+                )
+            )
         dt = timeit(lambda: msa.profile(ref, reads), 3)
-        print(f"profile MSA, 50 reads x ~250 bp vs 300 bp ref (numba): {dt * 1e3:.1f} ms total, {dt * 1e3 / 50:.3f} ms/read")
+        print(
+            f"profile MSA, 50 reads x ~250 bp vs 300 bp ref (numba): "
+            f"{dt * 1e3:.1f} ms total, {dt * 1e3 / 50:.3f} ms/read"
+        )
 
 
 if __name__ == "__main__":
